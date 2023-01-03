@@ -13,31 +13,34 @@ class Pade:
     """
     def __init__(self, coafs) -> None:
         self.p_coafs = coafs
-        self.degree_p = len(coafs)
+        self.degree = len(coafs)
 
     def evaluate(self,X):
-        """
-        calculate the approximation for a given matrix X
-        """
-        pass
+        U,V = self._evalUV(X)
+        p_m = U+V
+        q_m = (-1)**(self.degree%2)*U + (-1)**(self.degree%2 + 1) * V
+        #solver
+        exp_X = np.linalg.solve(q_m,p_m)
+        return exp_X
 
     def _evalUV(self, X:np.array, coafs: np.array):
         """
         returns the matrices: U,V for the polynomialy Pm, Qm
         """
-        res = np.array((X.shape[0],X.shape[1],self.degree_p//2 + 1))
+        res = np.array((X.shape[0],X.shape[1],self.degree//2 + 1))
         res[:,:,0] = np.eye(X.shape[0],X.shape[1])
         X_square = X@X
-        for i in range(1,self.degree_p//2 + 1):
+        for i in range(1,self.degree//2 + 1):
             res[:,:,i] = res[:,:,-1]@X_square
         # for U
         U = np.zeros((X.shape[0],X.shape[1]))
-        for i in range(self.degree_p//2 + 1):
+        for i in range(self.degree//2 + 1):
             U += coafs[i] * res[:,:i]
         #for V
         V = np.zeros((X.shape[0],X.shape[1]))
-        for i in range(self.degree_p//2 + self.degree_p%2):
-            V += coafs[i] * res[:,:i]
+        for i in range(self.degree//2 + self.degree%2):
+            V += coafs[i] * res[:,:,i]
+        return U,V
             
 
 
