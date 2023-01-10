@@ -3,4 +3,5 @@ Final work in scientific programming implementing square and scale algorithm usi
 
 refernces: 
 
-THE SCALING AND SQUARING METHOD FOR THE MATRIX EXPONENTIAL REVISITED, Nicholas J. Higham, 2005.
+    THE SCALING AND SQUARING METHOD FOR THE MATRIX EXPONENTIAL REVISITED, Nicholas J. Higham, 2005.
+    Introduction to algorithms, Thired edition, Thomas H.Cormen et al, pages 813-827.
