@@ -29,32 +29,35 @@ calcPadeMV :: Integer -> Matrix Double -> Matrix Double
 calcPadeMV a t | a == 0 = multiplieMyMatrix a t
                | otherwise = scale (bVector ! fromIntegral a )  (multiplieMyMatrix a t) + calcPadeMV (a-1) t
 
-calcPadeM :: Integer -> Matrix Double -> (Matrix Double , Matrix Double)
-calcPadeM a t | a == -1 = (calcPadeMU (13 `div` 2) (scale s t), calcPadeMV (13 `div` 2) (scale s t))
+calcPadeM :: Integer -> Integer ->  Matrix Double -> (Matrix Double , Matrix Double)
+calcPadeM a s t | a == -1 = (calcPadeMU (13 `div` 2) (scale toScale t), calcPadeMV (13 `div` 2) (scale toScale t))
               | otherwise =  (calcPadeMU (a `div` 2) t, calcPadeMV (a `div` 2) t)
               where 
-                s = 1 / 2^intS
-                intS = floor logResult
-                logResult = logBase 2 ( norm_1 t / phi13)
+                toScale = 1 / 2^s
 
-shouldScaleBack :: Integer -> Matrix Double -> Matrix Double 
-shouldScaleBack a t | a == -1 = multiplieMyMatrix intS t
-                    | otherwise =  t
-                    where 
-                        s =  2 ^ intS
-                        intS = floor logResult
-                        logResult = logBase 2 ( norm_1 t / phi13)
+getS :: Matrix Double -> Integer
+getS t = s
+        where 
+        s = ceiling logResult
+        logResult = logBase 2 ( norm_1 t / phi13)
+
+shouldScaleBack :: Integer -> Integer -> Matrix Double -> Matrix Double
+shouldScaleBack a s t | a == -1 = t^toScale
+              | otherwise =  t
+              where 
+                toScale = 2^s 
 
 main :: IO ()
 main = do
 
     mat <- loadMatrix "ExpoMatrix1000x1000.txt"
     let ourM = checkNorm phiPairs mat
-    let answer = calcPadeM ourM mat
+    let ourS = getS mat
+    let answer = calcPadeM ourM ourS mat
     let u = fst answer
     let v = snd answer
     let b = u + v
     let a = v - u
     let answer2 = linearSolveLS a b
-    let finalAnswer = shouldScaleBack ourM answer2
-    print (linearSolve a b)
+    let finalAnswer = shouldScaleBack ourM ourS answer2
+    print finalAnswer
