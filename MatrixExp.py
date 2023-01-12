@@ -2,8 +2,8 @@
 import numpy as np
 import scipy as sp
 import math
-import warnings
-warnings.filterwarnings("ignore")
+# import warnings
+# warnings.filterwarnings("ignore")
 b13 = np.array([64764752532480000, 32382376266240000, 7771770303897600,
                 1187353796428800, 129060195264000, 10559470521600,
                 670442572800, 33522128640, 1323241920,
@@ -15,7 +15,19 @@ teta13 = np.array([1.495585217958292e-2,
                 2.097847961257068e0,
                 5.371920351148152e0])
 
+class KazmaarchSolver:
 
+    def __init__(self,A,b,sweeps=100) -> None:
+        self.A = A
+        self.b = b
+        self.sweeps= sweeps
+    
+    def solve(self,X):
+        n = self.A.shape[0]
+        for sweep in range(self.sweeps):
+            for i in range(n):
+                X = X + ((self.b[i,0] - (self.A[i,:].reshape((1,-1))).dot(X)[0,0])/(self.A[i,:]@np.transpose(self.A[i,:])))*(np.transpose(self.A[i,:]).reshape((-1,1)))
+        return X    
 
 class LUsolver:
     """
@@ -53,7 +65,7 @@ class LUsolver:
         U = np.zeros((n,n))
         L = np.eye(n,n)
 
-        for k in range(n):
+        for k in range(n-1):
             U[k,k] = A[k,k]
             L[k+1:n,k] = A[k+1:n,k]/A[k,k]
             U[k,k+1:n] = A[k,k+1:n]
@@ -82,7 +94,6 @@ class LUsolver:
             x[i] = (y[i] - self.U[i,i+1:]@x[i+1:])/self.U[i,i]
         return x
 
-
 class Solver:
     
     def __init__(self,A:np.array,res:np.array) -> None:
@@ -101,6 +112,19 @@ class Solver:
             X[:,i] =  LUsolver(self.A,self.res[:,i]).decomp().solve().reshape(X[:,i].shape)
         return X
 
+class Ksolver(Solver):
+    def __init__(self, A: np.array, res: np.array) -> None:
+        super().__init__(A, res)
+    
+    def solve(self):
+        n = self.A.shape[0]
+        X = np.empty((n,n))
+        for i in range(self.res.shape[1]):
+            K = KazmaarchSolver(self.A,self.res[:,i].reshape((-1,1)))
+            sol = K.solve(X[:,i].reshape((-1,1)))
+            X[:,i] =  sol.reshape(X[:,i].shape)
+        return X
+
 class Pade:
     """
     Pade represents a Pade approximation for a matrix exponension function as writen in [1].
@@ -115,34 +139,19 @@ class Pade:
         """
         returns the matrices: U,V for the polynomialy Pm, Qm
         """
-        # res = np.empty((X.shape[0],X.shape[1],self.degree//2 + 1))
-        # res[:,:,0] = np.eye(X.shape[0],X.shape[1])
-        # X_square = X@X
-        # for i in range(1,self.degree//2 + 1):
-        #     res[:,:,i] = res[:,:,i-1]@X_square
-        # # for U
-        # U = np.zeros((X.shape[0],X.shape[1]))
-        # for i in range(self.degree//2 + 1):
-        #     U += coafs[i] * res[:,:,i]
-        # #for V
-        # V = np.zeros((X.shape[0],X.shape[1]))
-        # for i in range(self.degree//2 + self.degree%2):
-        #     V += coafs[i] * res[:,:,i]
         res = np.empty((X.shape[0],X.shape[1],self.degree + 1))
         res[:,:,0] = np.eye(X.shape[0],X.shape[1])
         X_square = X@X
         
-        
-        for i in range(2,self.degree + 1,2):
-            res[:,:,i] = res[:,:,i-2] @ X_square
-        for i in range(1,self.degree + 1,2):
-            res[:,:,i] = res[:,:,i-1] *X
+        for i in range(1,self.degree+1):
+            res[:,:,i] = res[:,:,i-1]@X
+
         #for even == U
         U = np.zeros((X.shape[0],X.shape[1]))
-        for i in range(0,self.degree+ 1,2):
+        for i in range(0,self.degree + 1,2):
             U += coafs[i] * res[:,:,i]
         V = np.zeros((X.shape[0],X.shape[1]))
-        for i in range(1,self.degree+ 1,2):
+        for i in range(1,self.degree + 1,2):
             V += coafs[i] * res[:,:,i]
 
         return U,V
@@ -153,14 +162,11 @@ class Pade:
         """
         U,V = self._evalUV(X,self.p_coafs)
         p_m = U+V
-        q_m = (-1)**(self.degree%2)*U + (-1)**(self.degree%2 + 1) * V
+        q_m = ((-1)**(self.degree%2))*U + ((-1)**(self.degree%2 + 1)) * V
         #solver
 
-        exp_X = Solver(q_m,p_m).solve()
+        exp_X = Ksolver(q_m,p_m).solve()
         return exp_X
-
-    
-      
 
 class scaling_and_squaring:
     """
