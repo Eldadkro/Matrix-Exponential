@@ -33,9 +33,17 @@ calcPadeM :: Integer -> Matrix Double -> (Matrix Double , Matrix Double)
 calcPadeM a t | a == -1 = (calcPadeMU (13 `div` 2) (scale s t), calcPadeMV (13 `div` 2) (scale s t))
               | otherwise =  (calcPadeMU (a `div` 2) t, calcPadeMV (a `div` 2) t)
               where 
-                s = fromInteger intS
+                s = 1 / 2^intS
                 intS = floor logResult
                 logResult = logBase 2 ( norm_1 t / phi13)
+
+shouldScaleBack :: Integer -> Matrix Double -> Matrix Double 
+shouldScaleBack a t | a == -1 = multiplieMyMatrix intS t
+                    | otherwise =  t
+                    where 
+                        s =  2 ^ intS
+                        intS = floor logResult
+                        logResult = logBase 2 ( norm_1 t / phi13)
 
 main :: IO ()
 main = do
@@ -43,6 +51,10 @@ main = do
     mat <- loadMatrix "ExpoMatrix1000x1000.txt"
     let ourM = checkNorm phiPairs mat
     let answer = calcPadeM ourM mat
-    let b = fst answer + snd answer
-    let a = snd answer - fst answer
+    let u = fst answer
+    let v = snd answer
+    let b = u + v
+    let a = v - u
+    let answer2 = linearSolveLS a b
+    let finalAnswer = shouldScaleBack ourM answer2
     print (linearSolve a b)
