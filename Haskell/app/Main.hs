@@ -43,8 +43,6 @@ main = do
     mat <- loadMatrix "ExpoMatrix1000x1000.txt"
     let ourM = checkNorm phiPairs mat
     let answer = calcPadeM ourM mat
-    print answer
-
     let b = fst answer + snd answer
     let a = snd answer - fst answer
     print (linearSolve a b)
