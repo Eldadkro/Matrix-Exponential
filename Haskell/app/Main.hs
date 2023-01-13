@@ -6,7 +6,7 @@ phi13 = 5.371920351148152
 phiPairs = [(3,0.01495585217958292),(5,0.2539398330063230),(7,0.9504178996162932),(9,2.097847961257068)]
 bVector =  vector[64764752532480000, 32382376266240000, 7771770303897600,1187353796428800, 129060195264000, 10559470521600,670442572800, 33522128640, 1323241920,40840800, 960960, 16380, 182, 1]
 
-matrixSize = 3
+matrixSize = 1000
 
 checkNorm :: [(Integer,Double)] -> Matrix Double -> Integer
 checkNorm [] _ = -1
@@ -31,7 +31,7 @@ calcPadeMU a t | a == 0 = scale b2p1 mat2p1
                   
 
 calcPadeMV :: Integer -> Matrix Double -> Matrix Double
-calcPadeMV a t | a == 0 = multiplieMyMatrix 0 t
+calcPadeMV a t | a == 0 = scale b2 (multiplieMyMatrix 0 t)
                | otherwise = scale b2 mat2 + calcPadeMV (a-1) t
                 where  
                   mat2 = multiplieMyMatrix k2 t
@@ -59,21 +59,22 @@ shouldScaleBack a s t | a == -1 = t^toScale
 main :: IO ()
 main = do
 
-    mat <- loadMatrix "test.txt"
+    mat <- loadMatrix "ExpoMatrix1000x1000.txt"
     let ourM = checkNorm phiPairs mat
     let ourS = getS mat
     let answer = calcPadeM ourM ourS mat
     let u = fst answer
     let v = snd answer
-    print (norm_1 mat)
     saveMatrix "haskell-Utest.txt" "%0.10f" u
     saveMatrix "haskell-Vtest.txt" "%0.10f" v
     let p = u + v
     let q = v - u
     saveMatrix "haskell-Qtest.txt" "%0.10f" q
     saveMatrix "haskell-Ptest.txt" "%0.10f" p
-    let answer2 = linearSolve q p 
-    print answer2
-    --let finalAnswer = shouldScaleBack ourM ourS answer2
+    let answer2 = linearSolveLS q p 
+    saveMatrix "beforeFinalScale.txt" " %f ," answer2
+
+    --print answer2
+    let finalAnswer = shouldScaleBack ourM ourS answer2
     --print finalAnswer
-    --saveMatrix "answer.txt" " %f ," finalAnswer
+    saveMatrix "answer.txt" " %f ," finalAnswer
