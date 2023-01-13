@@ -203,15 +203,19 @@ class scaling_and_squaring:
         return math.exp(miu) * X
 
 
-                
-            
-            
-            
-    
-
-
-
-
+#%%
 
 mat = np.loadtxt("inv_matrix(1000x1000).txt", delimiter=",", dtype=float)
 exp_mat = scaling_and_squaring(b13,teta13).evaluate(mat)
+
+
+#%%
+
+mat = np.loadtxt("inv_matrix(1000x1000).txt", delimiter=",", dtype=float)
+norm1 = lambda X: np.max(np.sum(np.abs(X),axis=1))
+n = mat.shape[0]
+s = math.ceil(math.log2(np.linalg.norm(mat,1)/teta13[-1]))
+mat = mat/(2**s)
+U,V = Pade(b13)._evalUV(mat,b13) 
+np.savetxt("results\U.csv", U,delimiter=',')
+np.savetxt("results\V.csv", V,delimiter=',')
