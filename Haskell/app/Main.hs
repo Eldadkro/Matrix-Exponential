@@ -69,4 +69,5 @@ main = do
     let a = v - u
     let answer2 = linearSolveLS a b
     let finalAnswer = shouldScaleBack ourM ourS answer2
+    print finalAnswer
     saveMatrix "answer.txt" " %f ," finalAnswer
