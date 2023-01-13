@@ -1,6 +1,6 @@
 #%%
 import numpy as np
-import scipy as sp
+import scipy
 import math
 # import warnings
 # warnings.filterwarnings("ignore")
@@ -207,7 +207,7 @@ class scaling_and_squaring:
 
 mat = np.loadtxt("inv_matrix(1000x1000).txt", delimiter=",", dtype=float)
 exp_mat = scaling_and_squaring(b13,teta13).evaluate(mat)
-
+np.linalg.norm(exp_mat - scipy.linalg.expm(mat))
 
 #%%
 
