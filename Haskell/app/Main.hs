@@ -22,12 +22,21 @@ multiplieMyMatrix a t | a == 0 = ident matrixSize
                       | otherwise = t <> multiplieMyMatrix (a-1) t
 
 calcPadeMU :: Integer -> Matrix Double -> Matrix Double
-calcPadeMU a t | a == 0 = multiplieMyMatrix (a + 1) t
-               | otherwise = scale (bVector ! (fromIntegral a + 1))  (multiplieMyMatrix (a+1) t) + calcPadeMU (a-1) t
+calcPadeMU a t | a == 0 = scale b2p1 mat2p1
+               | otherwise = scale b2p1 mat2p1 + calcPadeMU (a-1) t
+               where 
+                  mat2p1 = multiplieMyMatrix k2p1 t
+                  b2p1 = bVector ! fromIntegral k2p1
+                  k2p1 = (2 * a) + 1
+                  
 
 calcPadeMV :: Integer -> Matrix Double -> Matrix Double
-calcPadeMV a t | a == 0 = multiplieMyMatrix a t
-               | otherwise = scale (bVector ! fromIntegral a )  (multiplieMyMatrix a t) + calcPadeMV (a-1) t
+calcPadeMV a t | a == 0 = multiplieMyMatrix 0 t
+               | otherwise = scale b2 mat2 + calcPadeMV (a-1) t
+                where  
+                  mat2 = multiplieMyMatrix k2 t
+                  b2 = bVector ! fromIntegral k2
+                  k2 = 2 * a
 
 calcPadeM :: Integer -> Integer ->  Matrix Double -> (Matrix Double , Matrix Double)
 calcPadeM a s t | a == -1 = (calcPadeMU (13 `div` 2) (scale toScale t), calcPadeMV (13 `div` 2) (scale toScale t))
@@ -60,4 +69,4 @@ main = do
     let a = v - u
     let answer2 = linearSolveLS a b
     let finalAnswer = shouldScaleBack ourM ourS answer2
-    print finalAnswer
+    saveMatrix "answer.txt" " %f ," finalAnswer
