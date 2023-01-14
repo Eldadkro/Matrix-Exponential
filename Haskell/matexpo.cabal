@@ -35,6 +35,7 @@ executable matexpo
     -- other-extensions:
     build-depends:    
         base ^>=4.16.4.0,
-        hmatrix ==0.20.2
+        hmatrix ==0.20.2,
+        ghc ==9.2.5
     hs-source-dirs:   app
     default-language: Haskell2010
