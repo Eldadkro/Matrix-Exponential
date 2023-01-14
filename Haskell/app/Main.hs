@@ -2,7 +2,8 @@ module Main where
 import Prelude hiding((<>))
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
-import GHC.Plugins (lookupPackageName)
+
+
 phi13 = 5.371920351148152
 phiPairs = [(3,0.01495585217958292),(5,0.2539398330063230),(7,0.9504178996162932),(9,2.097847961257068)]
 bVector =  vector[64764752532480000, 32382376266240000, 7771770303897600,1187353796428800, 129060195264000, 10559470521600,670442572800, 33522128640, 1323241920,40840800, 960960, 16380, 182, 1]
@@ -51,51 +52,51 @@ getS t = s
         s = ceiling logResult
         logResult = logBase 2 ( norm_1 t / phi13)
 
-shouldScaleBack :: Integer -> Integer -> Matrix Double -> Matrix Double
-shouldScaleBack a s t | a == -1 = t^toScale
-              | otherwise =  t
-              where 
-                toScale = 2^s 
+scaleBack :: Integer -> Matrix Double -> Matrix Double
+scaleBack s amatrix | s == 0 = amatrix
+              | otherwise = sm1<>sm1
+              where
+                sm1 = scaleBack (s-1) amatrix
+
+shouldScaleBack m s amatrix | m == -1 = scaleBack s amatrix
+                            | otherwise =  amatrix
+
+
 
 
 kaczmarzLoopNumber = 50
 
-kaczmarzFunc :: Int -> [Vector Double] -> Vector Double -> Vector Double -> [Vector Double]
-kaczmarzFunc index rowsA colB xj | index == matrixSize = [xj]
-                                 | otherwise = kaczmarzFunc (index + 1) rowsA colB xjp1
-                                    where 
-                                      xjp1 = xj + flatten proj
-                                      proj = scale ((bi - dotAiXjp1)/lenAi) aColVector
-                                      bi = colB ! index
-                                      dotAiXjp1 = (aRowVector * asColumn xj) `atIndex` (0,0)
-                                      lenAi = (aRowVector * aColVector) `atIndex` (0,0)
-                                      aColVector = asColumn (rowsA!!index)
-                                      aRowVector = asRow (rowsA!!index)
 
-kaczmarzForEach :: Int -> [Vector Double] -> [Vector Double] -> [Vector Double] -> [Vector Double]
-kaczmarzForEach index rows columns x | index < matrixSize = myloop
-                                     | otherwise = x
-                                      where 
-                                        myloop = xj ++ xRest
-                                        xj = kaczmarzFunc 0 rows (columns!!index) (x!!index)
-                                        xRest = kaczmarzForEach (index+1) rows columns x
-
+kaczmarzForEach :: Matrix Double -> Matrix Double -> Matrix Double -> Int -> Int -> [Vector Double]
+kaczmarzForEach a b x n i | i >= n = []
+                          | otherwise = kacI  : kaczmarzForEach a b x n (i+1)
+                          where
+                              kacI = kaczmarz' a bi xi 100 0
+                              xi = flatten (x ¿ [i])
+                              bi = flatten (b ¿ [i])
                               
 
---kaczmarzForEach index rows = rows ++ kaczmarzFunc index
 
-kaczmarzLoop :: Int -> [Vector Double] -> [Vector Double] -> [Vector Double] -> [Vector Double]
-kaczmarzLoop index rowsA columnsB x | index == kaczmarzLoopNumber = x
-                                    | otherwise = next 
-                                    where 
-                                      newX = kaczmarzForEach 0 rowsA columnsB x
-                                      next = kaczmarzLoop (index+1) rowsA columnsB newX
 
 changeV2L :: Int -> [Vector Double] -> [[Double]]
 changeV2L index x | index < (matrixSize - 1) = myloop
                   | otherwise = [toList (x!!index)]
                   where 
                     myloop = toList (x!!index) : changeV2L (index+1) x
+
+kaczmarz :: Matrix Double -> Vector Double -> Vector Double -> Int -> Vector Double
+kaczmarz a b x n = kaczmarz' a b x n 0
+
+kaczmarz' :: Matrix Double -> Vector Double -> Vector Double -> Int -> Int -> Vector Double
+kaczmarz' a b x n i
+    | i >= n = x
+    | otherwise = kaczmarz' a b x' n (i+1)
+    where
+        r = a ! i -- get i-th row of A
+        dot = r <.> x -- calculate the dot product of the row and x
+        c = (b ! i - dot) / (r <.> r) -- calculate the correction term
+        x' = x + scale c r -- update x
+
 main :: IO ()
 main = do
 
@@ -112,11 +113,20 @@ main = do
     let rowsA = toRows q
     let columnsB = toColumns p
     randx <- randn 1000 1000
+
+    --result <- kaczmarz qMatrix pMatrix x n
     let columnsX = toColumns randx
-    let listXCols = kaczmarzLoop 0 rowsA columnsB columnsX
-    print "aaa"
-    writeFile "file2.txt" (show (changeV2L 0 listXCols))
-    print "aaa"
+    --let listXCols = kaczmarz2 0 rowsA columnsB columnsX
+    --let answeraa = kaczmarz q 
+    let answeraa = fromColumns (kaczmarzForEach q p randx 1000 0)
+
+    print (kaczmarz' q (flatten (p ¿ [0])) (flatten (randx ¿ [0])) 100 0)
+    print "aaa1"
+    saveMatrix "test22Kaz.txt" "%0.10f" answeraa
+    let finalAnswerkaz = shouldScaleBack ourM ourS answeraa
+    saveMatrix "testfinal22Kaz.txt" "%0.10f" finalAnswerkaz
+    --writeFile "file2.txt" (show (changeV2L 0 listXCols))
+    print "aaa2"
     --writeFile "file.txt" (show listXCols)
     
     print "aaa"
