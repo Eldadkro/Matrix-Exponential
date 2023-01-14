@@ -2,6 +2,9 @@ module Main where
 import Prelude hiding((<>))
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
+import Data.Maybe
+
+import Data.Time
 
 
 phi13 = 5.371920351148152
@@ -64,14 +67,19 @@ shouldScaleBack m s amatrix | m == -1 = scaleBack s amatrix
 
 
 
-kaczmarzLoopNumber = 50
-
+kaczmarzLoopNumber = 1000
+totalLoops = 100
+runKaczmarzLoop :: Matrix Double -> Matrix Double -> Matrix Double -> Int -> Matrix Double
+runKaczmarzLoop a b x i | i >= totalLoops = x
+                          | otherwise = runKaczmarzLoop a b newX (i+1)
+                          where
+                              newX = fromColumns (kaczmarzForEach a b x matrixSize 0)
 
 kaczmarzForEach :: Matrix Double -> Matrix Double -> Matrix Double -> Int -> Int -> [Vector Double]
 kaczmarzForEach a b x n i | i >= n = []
                           | otherwise = kacI  : kaczmarzForEach a b x n (i+1)
                           where
-                              kacI = kaczmarz' a bi xi 100 0
+                              kacI = kaczmarz' a bi xi kaczmarzLoopNumber 0
                               xi = flatten (x ¿ [i])
                               bi = flatten (b ¿ [i])
                               
@@ -97,51 +105,33 @@ kaczmarz' a b x n i
         c = (b ! i - dot) / (r <.> r) -- calculate the correction term
         x' = x + scale c r -- update x
 
+padeApproxemteLS :: Matrix Double -> Matrix Double
+padeApproxemteLS aMatrix = finalAnswer 
+                        where 
+                          ourM = checkNorm phiPairs aMatrix
+                          ourS = getS aMatrix
+                          padePolynom = calcPadeM ourM ourS aMatrix
+                          u = fst padePolynom
+                          v = snd padePolynom
+                          p = u + v
+                          q = v - u
+                          n =  1000 :: Int 
+                          zero = 0 :: Double
+                          x = konst zero (n,n)
+                          kaczmarzAnswer = runKaczmarzLoop q p x 0
+                          finalAnswer = shouldScaleBack ourM ourS kaczmarzAnswer
+
+
 main :: IO ()
 main = do
 
     mat <- loadMatrix "ExpoMatrix1000x1000.txt"
-    let ourM = checkNorm phiPairs mat
-    let ourS = getS mat
-    let answer = calcPadeM ourM ourS mat
-    let u = fst answer
-    let v = snd answer
-    let p = u + v
-    let q = v - u
 
-    --Kaczmarz method
-    let rowsA = toRows q
-    let columnsB = toColumns p
-    randx <- randn 1000 1000
+    let ourAnswer = padeApproxemteLS mat
 
-    --result <- kaczmarz qMatrix pMatrix x n
-    let columnsX = toColumns randx
-    --let listXCols = kaczmarz2 0 rowsA columnsB columnsX
-    --let answeraa = kaczmarz q 
-    let answeraa = fromColumns (kaczmarzForEach q p randx 1000 0)
+    let haskellSol = expm mat
 
-    print (kaczmarz' q (flatten (p ¿ [0])) (flatten (randx ¿ [0])) 100 0)
-    print "aaa1"
-    saveMatrix "test22Kaz.txt" "%0.10f" answeraa
-    let finalAnswerkaz = shouldScaleBack ourM ourS answeraa
-    saveMatrix "testfinal22Kaz.txt" "%0.10f" finalAnswerkaz
-    --writeFile "file2.txt" (show (changeV2L 0 listXCols))
-    print "aaa2"
-    --writeFile "file.txt" (show listXCols)
+    let dif = norm_1 (ourAnswer - haskellSol)
+    print dif
     
-    print "aaa"
-    --let ourSol = fromRows listXCols
-    --print (rows ourSol)
-    --print (cols ourSol)
-    print "bbb1"
-    --saveMatrix "OurSolve" " %f ," ourSol
-    print "bbb"
-    --let ourSolfinalAnswer = shouldScaleBack ourM ourS ourSol
-    --saveMatrix "OurSolve" " %f ," ourSolfinalAnswer
 
-    let answer2 = linearSolveLS q p 
-
-    --print answer2
-    let finalAnswer = shouldScaleBack ourM ourS answer2
-    --print finalAnswer
-    saveMatrix "answer.txt" " %f ," finalAnswer
