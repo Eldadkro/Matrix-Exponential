@@ -2,6 +2,11 @@ module Main where
 import Prelude hiding((<>))
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
+import Data.Maybe
+
+import Data.Time
+
+
 phi13 = 5.371920351148152
 phiPairs = [(3,0.01495585217958292),(5,0.2539398330063230),(7,0.9504178996162932),(9,2.097847961257068)]
 bVector =  vector[64764752532480000, 32382376266240000, 7771770303897600,1187353796428800, 129060195264000, 10559470521600,670442572800, 33522128640, 1323241920,40840800, 960960, 16380, 182, 1]
@@ -50,31 +55,83 @@ getS t = s
         s = ceiling logResult
         logResult = logBase 2 ( norm_1 t / phi13)
 
-shouldScaleBack :: Integer -> Integer -> Matrix Double -> Matrix Double
-shouldScaleBack a s t | a == -1 = t^toScale
-              | otherwise =  t
-              where 
-                toScale = 2^s 
+scaleBack :: Integer -> Matrix Double -> Matrix Double
+scaleBack s amatrix | s == 0 = amatrix
+              | otherwise = sm1<>sm1
+              where
+                sm1 = scaleBack (s-1) amatrix
+
+shouldScaleBack m s amatrix | m == -1 = scaleBack s amatrix
+                            | otherwise =  amatrix
+
+
+
+
+kaczmarzLoopNumber = 1000
+totalLoops = 100
+runKaczmarzLoop :: Matrix Double -> Matrix Double -> Matrix Double -> Int -> Matrix Double
+runKaczmarzLoop a b x i | i >= totalLoops = x
+                          | otherwise = runKaczmarzLoop a b newX (i+1)
+                          where
+                              newX = fromColumns (kaczmarzForEach a b x matrixSize 0)
+
+kaczmarzForEach :: Matrix Double -> Matrix Double -> Matrix Double -> Int -> Int -> [Vector Double]
+kaczmarzForEach a b x n i | i >= n = []
+                          | otherwise = kacI  : kaczmarzForEach a b x n (i+1)
+                          where
+                              kacI = kaczmarz' a bi xi kaczmarzLoopNumber 0
+                              xi = flatten (x ¿ [i])
+                              bi = flatten (b ¿ [i])
+                              
+
+
+
+changeV2L :: Int -> [Vector Double] -> [[Double]]
+changeV2L index x | index < (matrixSize - 1) = myloop
+                  | otherwise = [toList (x!!index)]
+                  where 
+                    myloop = toList (x!!index) : changeV2L (index+1) x
+
+kaczmarz :: Matrix Double -> Vector Double -> Vector Double -> Int -> Vector Double
+kaczmarz a b x n = kaczmarz' a b x n 0
+
+kaczmarz' :: Matrix Double -> Vector Double -> Vector Double -> Int -> Int -> Vector Double
+kaczmarz' a b x n i
+    | i >= n = x
+    | otherwise = kaczmarz' a b x' n (i+1)
+    where
+        r = a ! i -- get i-th row of A
+        dot = r <.> x -- calculate the dot product of the row and x
+        c = (b ! i - dot) / (r <.> r) -- calculate the correction term
+        x' = x + scale c r -- update x
+
+padeApproxemteLS :: Matrix Double -> Matrix Double
+padeApproxemteLS aMatrix = finalAnswer 
+                        where 
+                          ourM = checkNorm phiPairs aMatrix
+                          ourS = getS aMatrix
+                          padePolynom = calcPadeM ourM ourS aMatrix
+                          u = fst padePolynom
+                          v = snd padePolynom
+                          p = u + v
+                          q = v - u
+                          n =  1000 :: Int 
+                          zero = 0 :: Double
+                          x = konst zero (n,n)
+                          kaczmarzAnswer = runKaczmarzLoop q p x 0
+                          finalAnswer = shouldScaleBack ourM ourS kaczmarzAnswer
+
 
 main :: IO ()
 main = do
 
     mat <- loadMatrix "ExpoMatrix1000x1000.txt"
-    let ourM = checkNorm phiPairs mat
-    let ourS = getS mat
-    let answer = calcPadeM ourM ourS mat
-    let u = fst answer
-    let v = snd answer
-    saveMatrix "haskell-Utest.txt" "%0.10f" u
-    saveMatrix "haskell-Vtest.txt" "%0.10f" v
-    let p = u + v
-    let q = v - u
-    saveMatrix "haskell-Qtest.txt" "%0.10f" q
-    saveMatrix "haskell-Ptest.txt" "%0.10f" p
-    let answer2 = linearSolveLS q p 
-    saveMatrix "beforeFinalScale.txt" " %f ," answer2
 
-    --print answer2
-    let finalAnswer = shouldScaleBack ourM ourS answer2
-    --print finalAnswer
-    saveMatrix "answer.txt" " %f ," finalAnswer
+    let ourAnswer = padeApproxemteLS mat
+
+    let haskellSol = expm mat
+
+    let dif = norm_1 (ourAnswer - haskellSol)
+    print dif
+    
+
